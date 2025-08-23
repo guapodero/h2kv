@@ -12,13 +12,12 @@ use http::{
 use tokio::net::{TcpListener, TcpStream};
 
 use crate::Config;
-use crate::storage::{StorageBackend, StorageFactory};
+use crate::storage::StorageBackend;
 
-pub async fn listen(config: Config) -> Result<()> {
+pub async fn listen(config: &Config, db: Arc<impl StorageBackend>) -> Result<()> {
     let listener = TcpListener::bind(format!("127.0.0.1:{}", config.port)).await?;
-    let db = Arc::new(StorageFactory::create(&config.storage_dir));
 
-    log::debug!("listening on {:?}", listener.local_addr()?);
+    log::info!("listening on {:?}", listener.local_addr()?);
 
     loop {
         if let Ok((socket, _peer_addr)) = listener.accept().await {

@@ -1,10 +1,11 @@
 [package]
 name = "http2kv"
 version = "0.1.0"
-edition = "2024"
 description = "HTTP/2 interface for key-value storage systems"
 repository = "https://github.com/guapodero/http2kv"
 license = "MIT OR Apache-2.0"
+edition = "2024"
+rust-version = "1.88"
 
 [dependencies]
 anyhow = "1"
@@ -13,10 +14,12 @@ http = "1"
 h2 = "0.4"
 log = "0.4"
 env_logger = { version = "0.10", default-features = false }
-tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "net"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "net", "signal"] }
 tokio-rustls = "0.26"
 webpki-roots = "1"
 auto-args = "0.3"
+walkdir = "2.5"
+pathdiff = "0.2"
 
 [dependencies.leveldb-rs-binding]
 git = "https://github.com/kaimast/leveldb-rs-binding.git"

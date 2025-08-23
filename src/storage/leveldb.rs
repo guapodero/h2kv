@@ -1,4 +1,5 @@
 use std::path::{Path, PathBuf};
+use std::sync::mpsc::Sender;
 
 use leveldb::database::Database;
 use leveldb::database::serializable::Serializable;
@@ -12,10 +13,11 @@ use crate::storage::StorageBackend;
 pub struct DatabaseWrapper {
     db: Database<PathKey>,
     write_opts: WriteOptions,
+    updates_tx: Sender<PathBuf>,
 }
 
 impl DatabaseWrapper {
-    pub fn new(path: &Path) -> Self {
+    pub fn new(path: &Path, updates_tx: Sender<PathBuf>) -> Self {
         let mut opts = Options::new();
         opts.create_if_missing = true;
 
@@ -24,29 +26,39 @@ impl DatabaseWrapper {
 
         let write_opts = WriteOptions::new();
 
-        Self { db, write_opts }
+        Self {
+            db,
+            write_opts,
+            updates_tx,
+        }
     }
 }
 
 impl StorageBackend for DatabaseWrapper {
-    fn get(&self, key: &Path) -> Result<Option<Vec<u8>>> {
+    fn get<P: AsRef<Path>>(&self, key: P) -> Result<Option<Vec<u8>>> {
         let read_opts = ReadOptions::new();
+        let path = key.as_ref();
         self.db
-            .get(read_opts, PathKey(key.into()))
-            .with_context(|| format!("failed get {}", key.to_str().unwrap()))
+            .get(read_opts, PathKey(path.into()))
+            .with_context(|| format!("failed get {}", path.to_string_lossy()))
     }
 
-    fn put(&self, key: &Path, value: &[u8]) -> Result<()> {
+    fn put<P: AsRef<Path>>(&self, key: P, value: &[u8]) -> Result<()> {
+        let path = key.as_ref();
         self.db
-            .put(self.write_opts, PathKey(key.into()), value)
-            .with_context(|| format!("failed put {}", key.to_str().unwrap()))?;
+            .put(self.write_opts, PathKey(path.into()), value)
+            .with_context(|| format!("failed put {}", path.to_string_lossy()))?;
+        self.updates_tx.send(path.to_owned())?;
         Ok(())
     }
 
-    fn delete(&self, key: &Path) -> Result<()> {
+    fn delete<P: AsRef<Path>>(&self, key: P) -> Result<()> {
+        let path = key.as_ref();
         self.db
-            .delete(self.write_opts, PathKey(key.into()))
-            .with_context(|| format!("failed delete {}", key.to_str().unwrap()))
+            .delete(self.write_opts, PathKey(path.into()))
+            .with_context(|| format!("failed delete {}", path.to_string_lossy()))?;
+        self.updates_tx.send(path.to_owned())?;
+        Ok(())
     }
 }
 
