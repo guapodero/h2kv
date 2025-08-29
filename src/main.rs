@@ -17,7 +17,7 @@ struct Opt {
     sync_write: bool,
 }
 
-impl TryFrom<Opt> for http2kv::Config {
+impl TryFrom<Opt> for h2kv::Config {
     type Error = anyhow::Error;
 
     fn try_from(value: Opt) -> std::result::Result<Self, Self::Error> {
@@ -49,18 +49,21 @@ impl TryFrom<Opt> for http2kv::Config {
 async fn main() -> Result<()> {
     env_logger::try_init()?;
 
-    let config: http2kv::Config = Opt::from_args().try_into()?;
+    let config: h2kv::Config = Opt::from_args().try_into()?;
 
     let (updates_tx, updates_rx) = mpsc::channel::<PathBuf>();
-    let db = Arc::new(http2kv::StorageFactory::create(
+    let db = Arc::new(h2kv::StorageFactory::create(
         &config.storage_dir,
         updates_tx,
     ));
 
     if let Some(ref sync_dir) = config.sync_dir {
-        http2kv::store_each_file(sync_dir, db.clone())?;
-        let count = updates_rx.try_iter().count();
-        log::info!("sync-write: stored {count} objects from {sync_dir:?}");
+        h2kv::fs_sync::store_each_file(sync_dir, db.clone())?;
+        let update_keys = h2kv::fs_sync::collect_updates(&updates_rx);
+        log::info!(
+            "sync-dir: stored {} objects from {sync_dir:?}",
+            update_keys.len()
+        );
     }
 
     loop {
@@ -74,17 +77,15 @@ async fn main() -> Result<()> {
                 log::info!("received SIGINT. exiting");
                 break;
             },
-            _ = http2kv::server::listen(&config, db.clone()) => {},
+            _ = h2kv::server::listen(&config, db.clone()) => {},
         }
     }
 
     if config.sync_write
         && let Some(ref sync_dir) = config.sync_dir
     {
-        let mut update_keys: Vec<PathBuf> = updates_rx.try_iter().collect();
-        update_keys.sort();
-        update_keys.dedup();
-        http2kv::write_each_key(sync_dir, db, &update_keys)?;
+        let update_keys = h2kv::fs_sync::collect_updates(&updates_rx);
+        h2kv::fs_sync::write_each_key(sync_dir, db, &update_keys)?;
         log::info!(
             "sync-write: wrote {} updates to {sync_dir:?}",
             update_keys.len()

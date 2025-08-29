@@ -1,6 +1,7 @@
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::Sender;
 
+use leveldb::batch::{Batch, Writebatch};
 use leveldb::database::Database;
 use leveldb::database::serializable::Serializable;
 use leveldb::kv::KV;
@@ -35,29 +36,52 @@ impl DatabaseWrapper {
 }
 
 impl StorageBackend for DatabaseWrapper {
-    fn get<P: AsRef<Path>>(&self, key: P) -> Result<Option<Vec<u8>>> {
+    fn get<P: AsRef<Path>>(&self, path: P) -> Result<Option<Vec<u8>>> {
+        let path = path.as_ref();
         let read_opts = ReadOptions::new();
-        let path = key.as_ref();
         self.db
             .get(read_opts, PathKey(path.into()))
             .with_context(|| format!("failed get {}", path.to_string_lossy()))
     }
 
-    fn put<P: AsRef<Path>>(&self, key: P, value: &[u8]) -> Result<()> {
-        let path = key.as_ref();
+    fn put<P: AsRef<Path>>(&self, path: P, value: &[u8]) -> Result<()> {
+        let path = path.as_ref();
+        let key = PathKey(path.into());
         self.db
-            .put(self.write_opts, PathKey(path.into()), value)
+            .put(self.write_opts, key, value)
             .with_context(|| format!("failed put {}", path.to_string_lossy()))?;
+        self.updates_tx.send(path.to_owned())?;
+
+        Ok(())
+    }
+
+    fn delete<P: AsRef<Path>>(&self, path: P) -> Result<()> {
+        let path = path.as_ref();
+        let key = PathKey(path.into());
+        self.db
+            .delete(self.write_opts, key)
+            .with_context(|| format!("failed delete {}", path.to_string_lossy()))?;
         self.updates_tx.send(path.to_owned())?;
         Ok(())
     }
 
-    fn delete<P: AsRef<Path>>(&self, key: P) -> Result<()> {
-        let path = key.as_ref();
-        self.db
-            .delete(self.write_opts, PathKey(path.into()))
-            .with_context(|| format!("failed delete {}", path.to_string_lossy()))?;
-        self.updates_tx.send(path.to_owned())?;
+    fn batch_update<K, V, I>(&self, iter: I) -> Result<()>
+    where
+        K: AsRef<Path>,
+        V: AsRef<[u8]>,
+        I: IntoIterator<Item = (K, Option<V>)>,
+    {
+        let mut batch = Writebatch::new();
+        for (k, v) in iter {
+            let k = k.as_ref();
+            match v {
+                Some(v) => batch.put(PathKey(k.into()), v.as_ref()),
+                None => batch.delete(PathKey(k.into())),
+            }
+            self.updates_tx.send(k.into())?;
+        }
+        self.db.write(self.write_opts, &batch)?;
+
         Ok(())
     }
 }

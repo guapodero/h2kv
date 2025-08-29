@@ -1,8 +1,8 @@
-# http2kv
+# h2kv
 
-[![Crates.io](https://img.shields.io/crates/v/http2kv.svg)](https://crates.io/crates/http2kv)
-[![Docs.rs](https://docs.rs/http2kv/badge.svg)](https://docs.rs/http2kv)
-[![CI](https://github.com/guapodero/http2kv/workflows/CI/badge.svg)](https://github.com/guapodero/http2kv/actions)
+[![Crates.io](https://img.shields.io/crates/v/h2kv.svg)](https://crates.io/crates/h2kv)
+[![Docs.rs](https://docs.rs/h2kv/badge.svg)](https://docs.rs/h2kv)
+[![CI](https://github.com/guapodero/h2kv/workflows/CI/badge.svg)](https://github.com/guapodero/h2kv/actions)
 
 ## Installation
 
@@ -10,7 +10,7 @@
 
 * Install the rust toolchain in order to have cargo installed by following
   [this](https://www.rust-lang.org/tools/install) guide.
-* run `cargo install http2kv`
+* run `cargo install h2kv`
 
 ## License
 
