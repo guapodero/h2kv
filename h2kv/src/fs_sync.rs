@@ -1,6 +1,7 @@
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::mpsc::Receiver;
+use std::{fs, io};
 
 use anyhow::Result;
 use walkdir::{DirEntry, WalkDir};
@@ -44,7 +45,7 @@ pub fn store_each_file(sync_dir: &Path, db: Arc<impl StorageBackend>) -> Result<
         let negotiated = NegotiatedPath::for_write(&storage_key, &empty_headers)?.unwrap();
         let mut extensions = PathExtensions::get_for_path(&storage_key, db.clone());
 
-        let content = std::fs::read(&file_path)?;
+        let content = fs::read(&file_path)?;
         db.batch_update([
             (negotiated.as_ref(), Some(content)),
             extensions.insert(&negotiated)?,
@@ -74,11 +75,13 @@ pub fn write_each_key(
 
         match db.get(&storage_key)? {
             Some(stored) => {
-                std::fs::write(&file_path, stored)?;
+                fs::write(&file_path, stored)?;
             }
-            None => {
-                std::fs::remove_file(&file_path)?;
-            }
+            None => fs::remove_file(&file_path).or_else(|e| match e.kind() {
+                // storage key was added and then removed
+                io::ErrorKind::NotFound => Ok(()),
+                _ => Err(e),
+            })?,
         }
     }
 

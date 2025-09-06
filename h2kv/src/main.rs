@@ -47,7 +47,13 @@ impl TryFrom<Opt> for h2kv::Config {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    env_logger::try_init()?;
+    if cfg!(debug_assertions) {
+        env_logger::Builder::from_default_env()
+            .format_timestamp(None)
+            .try_init()?;
+    } else {
+        env_logger::try_init()?;
+    }
 
     let config: h2kv::Config = Opt::from_args().try_into()?;
 

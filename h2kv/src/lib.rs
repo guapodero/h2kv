@@ -6,7 +6,7 @@ pub use storage::StorageFactory;
 
 mod content_negotiation;
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Config {
     pub port: i32,
     pub storage_dir: std::path::PathBuf,

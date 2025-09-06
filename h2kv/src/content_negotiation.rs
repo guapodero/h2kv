@@ -1,4 +1,5 @@
 use std::cmp::Ordering;
+use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::Arc;
@@ -118,16 +119,20 @@ impl<'a> NegotiatedPath<'a> {
         self.storage_key.extension().unwrap().to_string_lossy()
     }
 
-    pub fn content_type(&self) -> HeaderValue {
+    pub fn content_type_header(&self) -> HeaderValue {
         HeaderValue::from_str(self.media_type.essence().to_string().as_str()).unwrap()
     }
 
-    pub fn content_location(&self) -> HeaderValue {
+    pub fn content_location_header(&self) -> HeaderValue {
+        let file_name = match self.storage_extension().deref() {
+            ext if ext == Self::GENERIC_EXT => self.storage_key.file_stem(),
+            _ => self.storage_key.file_name(),
+        };
         // `self.storage_key` is relative to the root of the storage tree,
         // but content-location needs to be relative to the request URL
         // https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Location
-        let stored_file_name = Path::new("/").join(self.storage_key.file_name().unwrap());
-        HeaderValue::from_str(stored_file_name.to_str().unwrap()).unwrap()
+        let relative_location = Path::new("/").join(file_name.unwrap());
+        HeaderValue::from_str(relative_location.to_str().unwrap()).unwrap()
     }
 }
 

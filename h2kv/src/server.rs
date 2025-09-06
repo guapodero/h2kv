@@ -80,7 +80,7 @@ async fn handle_request(
                 Some(negotiated) => match db.get(&negotiated) {
                     Ok(Some(data)) => {
                         let mut headers = HeaderMap::new();
-                        headers.append(header::CONTENT_TYPE, negotiated.content_type());
+                        headers.append(header::CONTENT_TYPE, negotiated.content_type_header());
                         headers.append(header::CONTENT_LENGTH, data.len().into());
                         match method {
                             Method::HEAD => {
@@ -130,7 +130,11 @@ async fn handle_request(
                     ])?;
 
                     let mut headers = HeaderMap::new();
-                    headers.append(header::CONTENT_LOCATION, negotiated.content_location());
+                    headers.append(
+                        header::CONTENT_LOCATION,
+                        negotiated.content_location_header(),
+                    );
+
                     if !key_exists {
                         log::info!("created {negotiated} ({value_size} bytes)");
                         response(StatusCode::CREATED, Some(headers), None)?;
