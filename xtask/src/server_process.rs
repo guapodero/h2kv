@@ -1,8 +1,8 @@
 use std::fs;
 
-use devx_cmd::{read, run};
+use devx_cmd::{Cmd, read, run};
 
-use crate::{DynError, nix_shell};
+use crate::DynError;
 
 pub struct ServerProcess {
     server_pid: String,
@@ -25,16 +25,24 @@ impl ServerProcess {
         let temp_dir = temp_dir.trim();
         let pid_file = format!("{temp_dir}/h2kv.pid");
 
-        nix_shell(format!(
-            "{bin_path} \
-                --port {port} \
-                --storage-dir {temp_dir} \
-                --sync-dir {sync_dir} \
-                --sync-write &! ; \
-                echo $! > {pid_file}
-            "
-        ))?
-        .wait()?;
+        Cmd::new(bin_path)
+            .args(&[
+                "--port",
+                port.to_string().as_str(),
+                "--storage-dir",
+                temp_dir,
+                "--sync-dir",
+                sync_dir,
+                "--sync-write",
+                "--daemon",
+                "--pidfile",
+                &pid_file,
+                "--log-filename",
+                "/dev/fd/2",
+            ])
+            .log_err(Some(log::Level::Debug))
+            .spawn()?
+            .wait()?;
         let server_pid = read!("cat", pid_file)?;
 
         Ok(Self {

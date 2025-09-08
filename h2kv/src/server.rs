@@ -8,13 +8,10 @@ use h2::server::{self, SendResponse};
 use http::{HeaderMap, Method, Request, Response, StatusCode, Version, header};
 use tokio::net::{TcpListener, TcpStream};
 
-use crate::Config;
 use crate::content_negotiation::{NegotiatedPath, PathExtensions};
 use crate::storage::StorageBackend;
 
-pub async fn listen(config: &Config, db: Arc<impl StorageBackend>) -> Result<()> {
-    let listener = TcpListener::bind(format!("127.0.0.1:{}", config.port)).await?;
-
+pub async fn listen(listener: &TcpListener, db: Arc<impl StorageBackend>) -> Result<()> {
     log::info!("listening on {:?}", listener.local_addr()?);
 
     loop {

@@ -1,17 +1,23 @@
-pub mod fs_sync;
+pub mod runtime;
 pub mod server;
 
 mod storage;
-pub use storage::StorageFactory;
+pub use storage::{StorageBackend, StorageFactory};
 
 mod content_negotiation;
+mod fs_sync;
+
+use std::path::PathBuf;
 
 #[derive(Debug, Clone)]
 pub struct Config {
     pub port: i32,
-    pub storage_dir: std::path::PathBuf,
-    pub sync_dir: Option<std::path::PathBuf>,
+    pub storage_dir: PathBuf,
+    pub sync_dir: Option<PathBuf>,
     pub sync_write: bool,
+    pub daemon: bool,
+    pub pidfile: Option<PathBuf>,
+    pub log_filename: Option<PathBuf>,
 }
 
 mod util {

@@ -18,20 +18,20 @@ pub struct DatabaseWrapper {
 }
 
 impl DatabaseWrapper {
-    pub fn new(path: &Path, updates_tx: Sender<PathBuf>) -> Self {
+    pub fn try_new(path: &Path, updates_tx: Sender<PathBuf>) -> Result<Self> {
         let mut opts = Options::new();
         opts.create_if_missing = true;
 
-        let db = Database::open(path, opts)
-            .unwrap_or_else(|e| panic!("failed to open db {path:?}: {e:?}"));
+        let db =
+            Database::open(path, opts).with_context(|| format!("failed to open db {path:?}"))?;
 
         let write_opts = WriteOptions::new();
 
-        Self {
+        Ok(Self {
             db,
             write_opts,
             updates_tx,
-        }
+        })
     }
 }
 

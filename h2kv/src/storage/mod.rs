@@ -8,8 +8,11 @@ use anyhow::Result;
 pub struct StorageFactory;
 
 impl StorageFactory {
-    pub fn create(storage_dir: &Path, updates_tx: Sender<PathBuf>) -> impl StorageBackend + use<> {
-        leveldb::DatabaseWrapper::new(storage_dir.join("leveldb").as_path(), updates_tx)
+    pub fn try_create(
+        storage_dir: &Path,
+        updates_tx: Sender<PathBuf>,
+    ) -> Result<impl StorageBackend + use<>> {
+        leveldb::DatabaseWrapper::try_new(storage_dir.join("leveldb").as_path(), updates_tx)
     }
 }
 
