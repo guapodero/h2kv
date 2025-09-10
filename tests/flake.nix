@@ -19,6 +19,7 @@
             openssl
             hitch
             hurl
+            release-plz
           ];
         };
       }

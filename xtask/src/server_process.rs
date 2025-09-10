@@ -11,19 +11,12 @@ pub struct ServerProcess {
 
 impl ServerProcess {
     pub fn try_start(port: u32, sync_dir: &str) -> Result<Self, DynError> {
-        assert!(read!("test", "-d", sync_dir).is_ok());
-
-        let bin_path = fs::canonicalize(format!(
-            "{}/../target/debug/h2kv",
-            env!("CARGO_MANIFEST_DIR")
-        ))?
-        .to_string_lossy()
-        .into_owned();
-        assert!(read!("test", "-x", &bin_path).is_ok());
+        run!("test", "-d", sync_dir)?;
 
         let temp_dir = read!("mktemp", "--directory")?;
         let temp_dir = temp_dir.trim();
         let pid_file = format!("{temp_dir}/h2kv.pid");
+        let bin_path = Self::bin_path()?;
 
         Cmd::new(bin_path)
             .args(&[
@@ -49,6 +42,17 @@ impl ServerProcess {
             server_pid: server_pid.trim().to_string(),
             temp_dir: temp_dir.to_string(),
         })
+    }
+
+    pub fn bin_path() -> Result<String, DynError> {
+        let bin_path = fs::canonicalize(format!(
+            "{}/../target/debug/h2kv",
+            env!("CARGO_MANIFEST_DIR")
+        ))?
+        .to_string_lossy()
+        .into_owned();
+        run!("test", "-x", &bin_path)?;
+        Ok(bin_path)
     }
 }
 
