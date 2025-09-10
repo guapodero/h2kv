@@ -171,7 +171,7 @@ impl PathExtensions {
             .ok()
             .flatten()
             .and_then(|s| serde_json::from_slice(s.as_slice()).ok())
-            .unwrap_or(serde_json::Map::new());
+            .unwrap_or_default();
         Self { path, map }
     }
 
@@ -206,7 +206,7 @@ impl PathExtensions {
     fn get_media_type(&self, extension: &str) -> Result<Option<MediaType<'_>>> {
         match self.map.get(extension) {
             Some(v) => match v {
-                serde_json::Value::String(mt) => MediaTypeString(mt).try_into().map(|m| Some(m)),
+                serde_json::Value::String(mt) => MediaTypeString(mt).try_into().map(Some),
                 other => bail!("{extension}: {other:?} (should be string)"),
             },
             None => Ok(None),
@@ -237,14 +237,11 @@ impl PathExtensions {
 
     fn get_extension(&self, media_type: &MediaType<'_>) -> Result<Option<&str>> {
         for (k, v) in self.map.iter() {
-            match v {
-                serde_json::Value::String(mt) => {
-                    let mt: MediaType<'_> = MediaTypeString(&mt).try_into()?;
-                    if mt == *media_type {
-                        return Ok(Some(k.as_str()));
-                    }
+            if let serde_json::Value::String(mt) = v {
+                let mt: MediaType<'_> = MediaTypeString(mt).try_into()?;
+                if mt == *media_type {
+                    return Ok(Some(k.as_str()));
                 }
-                _ => (),
             }
         }
         Ok(None)

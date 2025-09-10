@@ -5,6 +5,19 @@ First off, thank you for considering contributing to h2kv.
 If your contribution is not straightforward, please first discuss the change you
 wish to make by creating a new issue before making the change.
 
+## Code quality
+
+The maintainers of this project evaluate potential contributions based on specific
+tenets in order to prevent abuse of the open source model of software development.
+This is in agreement with the Unix philosophy of doing one thing well.
+
+* usage over contributions
+* simplicity over circumspection
+* tidiness over efficiency
+
+In summary, the needs of the project are best served by code contributions which not
+only execute well, but also read well.
+
 ## Reporting issues
 
 Before reporting an issue on the
@@ -37,44 +50,13 @@ If the required subsection does not exist yet under **Unreleased**, create it!
 
 ## Developing
 
-### Set up
-
-This is no different than other Rust projects.
+This project relies on a set of integration tests to encourage refactoring and
+prevent feature regression. These tests require system-level dependencies
+which are provided by the Nix package manager.
 
 ```shell
 git clone https://github.com/guapodero/h2kv
 cd h2kv
-cargo test
+cargo build
+cargo xtask test
 ```
-
-### Useful Commands
-
-- Build and run release version:
-
-  ```shell
-  cargo build --release && cargo run --release
-  ```
-
-- Run Clippy:
-
-  ```shell
-  cargo clippy --all-targets --all-features --workspace
-  ```
-
-- Run all tests:
-
-  ```shell
-  cargo test --all-features --workspace
-  ```
-
-- Check to see if there are code formatting issues
-
-  ```shell
-  cargo fmt --all -- --check
-  ```
-
-- Format the code in the project
-
-  ```shell
-  cargo fmt --all
-  ```

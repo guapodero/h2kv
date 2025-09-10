@@ -23,6 +23,7 @@ fn try_main() -> Result<(), DynError> {
     let task = env::args().nth(1);
     match task.as_deref() {
         Some("test") => test_integration()?,
+        Some("doc") => docs_cli()?,
         _ => print_help(),
     }
 
@@ -34,6 +35,7 @@ fn print_help() {
         "Tasks:
 
 test            run integration tests
+doc             generate CLI.md
 "
     )
 }
@@ -65,17 +67,16 @@ fn test_integration() -> Result<(), DynError> {
         fs::remove_dir_all(sync_dir)?;
     }
 
-    if let Err(e) = &result {
-        let error = match try_exit_status(e) {
-            Ok(4) => io_error("test failure"),
-            Ok(3) => io_error("runtime error"),
-            _ => io_error(&format!(
-                "unexpected error: {}",
-                result.err().unwrap().to_string()
-            )),
-        };
-        Err(error)
-    } else {
-        Ok(())
-    }
+    result.map_err(|e| match try_exit_status(&e) {
+        Ok(4) => io_error("test failure"),
+        Ok(3) => io_error("runtime error"),
+        _ => io_error(&format!("unexpected error: {e}")),
+    })
+}
+
+fn docs_cli() -> Result<(), DynError> {
+    let bin_path = ServerProcess::bin_path()?;
+    let output = read!(bin_path, "--help")?;
+    fs::write("CLI.md", output)?;
+    Ok(())
 }
