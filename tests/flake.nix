@@ -1,5 +1,5 @@
 {
-  description = "test environment for h2kv";
+  description = "environment for h2kv";
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs?ref=nixos-25.05";
@@ -19,6 +19,7 @@
             openssl
             hitch
             hurl
+            release-plz
           ];
         };
       }

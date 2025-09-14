@@ -8,3 +8,4 @@ publish = false
 log.workspace = true
 env_logger.workspace = true
 devx-cmd = "0.5"
+cargo_metadata = "0.22"

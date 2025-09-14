@@ -14,9 +14,13 @@ anyhow = "1"
 bytes = "1"
 http = "1"
 h2 = "0.4"
-tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "net", "signal"] }
-tokio-rustls = "0.26"
-webpki-roots = "1"
+tokio = { version = "1", features = [
+  "rt-multi-thread",
+  "macros",
+  "sync",
+  "net",
+  "signal"
+] }
 auto-args = "0.3"
 serde_json = "1"
 daemonize = "0.5"
@@ -26,7 +30,6 @@ mime2ext = "0.1"
 mediatype = "0.20"
 headers-accept = "0.2"
 
-
 [dependencies.leveldb-rs-binding]
-git = "https://github.com/kaimast/leveldb-rs-binding.git"
-rev = "001fccb"
+git = "https://github.com/rim99/leveldb-rs-binding.git"
+rev = "a6eb341"

@@ -42,8 +42,8 @@ pub fn store_each_file(sync_dir: &Path, db: Arc<impl StorageBackend>) -> Result<
         let storage_key = storage_key.as_path();
 
         let empty_headers = http::HeaderMap::default();
-        let negotiated = NegotiatedPath::for_write(&storage_key, &empty_headers)?.unwrap();
-        let mut extensions = PathExtensions::get_for_path(&storage_key, db.clone());
+        let negotiated = NegotiatedPath::for_write(storage_key, &empty_headers)?.unwrap();
+        let mut extensions = PathExtensions::get_for_path(storage_key, db.clone());
 
         let content = fs::read(&file_path)?;
         db.batch_update([
@@ -73,7 +73,7 @@ pub fn write_each_key(
             file_path.set_extension("");
         }
 
-        match db.get(&storage_key)? {
+        match db.get(storage_key)? {
             Some(stored) => {
                 fs::write(&file_path, stored)?;
             }

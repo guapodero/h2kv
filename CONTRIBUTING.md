@@ -5,6 +5,19 @@ First off, thank you for considering contributing to h2kv.
 If your contribution is not straightforward, please first discuss the change you
 wish to make by creating a new issue before making the change.
 
+## Code quality
+
+The maintainers of this project evaluate potential contributions based on stylistic preferences.
+This is done to maintain a standard of code quality which makes the codebase inviting to newcomers
+who want to idependently research how features are implemented. Simply put, the needs of the project
+are best served by code that can be understood quickly by a human using only a text editor.
+
+All submitted code changes go through to an iterative quality assurance process prior to release.
+This may involve supplemental patches from maintainers to "fix up" code for the following reasons:
+
+* to ensure structural and stylistic consistency with the rest of the codebase
+* to make more effective use of the language in which the project is written (Rust)
+
 ## Reporting issues
 
 Before reporting an issue on the
@@ -37,44 +50,13 @@ If the required subsection does not exist yet under **Unreleased**, create it!
 
 ## Developing
 
-### Set up
-
-This is no different than other Rust projects.
+This project relies on a set of integration tests to encourage refactoring and
+prevent feature regression. These tests require system-level dependencies
+which are provided by the [Nix package manager](https://nixos.org/).
 
 ```shell
 git clone https://github.com/guapodero/h2kv
 cd h2kv
-cargo test
+cargo build
+cargo xtask test
 ```
-
-### Useful Commands
-
-- Build and run release version:
-
-  ```shell
-  cargo build --release && cargo run --release
-  ```
-
-- Run Clippy:
-
-  ```shell
-  cargo clippy --all-targets --all-features --workspace
-  ```
-
-- Run all tests:
-
-  ```shell
-  cargo test --all-features --workspace
-  ```
-
-- Check to see if there are code formatting issues
-
-  ```shell
-  cargo fmt --all -- --check
-  ```
-
-- Format the code in the project
-
-  ```shell
-  cargo fmt --all
-  ```

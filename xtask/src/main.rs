@@ -1,6 +1,7 @@
-use std::{env, fs, process};
+use std::{env, fs, io::BufRead, process};
 
-use devx_cmd::read;
+use cargo_metadata::MetadataCommand;
+use devx_cmd::{cmd, read, run};
 
 use xtask::{DynError, ServerProcess, TlsProxy, io_error, nix_shell, try_exit_status};
 
@@ -23,6 +24,9 @@ fn try_main() -> Result<(), DynError> {
     let task = env::args().nth(1);
     match task.as_deref() {
         Some("test") => test_integration()?,
+        Some("doc") => docs_cli()?,
+        Some("release-stage") => release_stage()?,
+        Some("release-push") => release_push()?,
         _ => print_help(),
     }
 
@@ -33,7 +37,10 @@ fn print_help() {
     eprintln!(
         "Tasks:
 
-test            run integration tests
+test                run integration tests
+doc                 generate CLI.txt
+release-stage       update docs, dependencies, changelog
+release-push        push release commit and publish to cargo registry
 "
     )
 }
@@ -65,17 +72,72 @@ fn test_integration() -> Result<(), DynError> {
         fs::remove_dir_all(sync_dir)?;
     }
 
-    if let Err(e) = &result {
-        let error = match try_exit_status(e) {
-            Ok(4) => io_error("test failure"),
-            Ok(3) => io_error("runtime error"),
-            _ => io_error(&format!(
-                "unexpected error: {}",
-                result.err().unwrap().to_string()
-            )),
-        };
-        Err(error)
-    } else {
-        Ok(())
+    result.map_err(|e| match try_exit_status(&e) {
+        Ok(4) => io_error("test failure"),
+        Ok(3) => io_error("runtime error"),
+        _ => io_error(&format!("unexpected error: {e}")),
+    })
+}
+
+fn docs_cli() -> Result<(), DynError> {
+    let bin_path = ServerProcess::bin_path()?;
+    let output = read!(bin_path, "--help")?;
+    fs::write("CLI.txt", output)?;
+    Ok(())
+}
+
+fn release_stage() -> Result<(), DynError> {
+    let changes = read!("git", "status", "--porcelain")?;
+    if !changes.is_empty() {
+        eprintln!("{changes}");
+        eprintln!("commit existing changes and try again");
+        std::process::exit(2);
     }
+
+    docs_cli()?;
+    nix_shell("release-plz update")?.wait()?;
+
+    Ok(())
+}
+
+fn release_push() -> Result<(), DynError> {
+    let md = MetadataCommand::new().exec()?;
+    let root = md.workspace_root.to_string();
+    let workspace_name = root.rsplit('/').next().unwrap();
+    let packages = md.workspace_packages();
+    let main_package = packages
+        .into_iter()
+        .find(|p| p.name.as_str() == workspace_name)
+        .unwrap_or_else(|| panic!("member with name {workspace_name} should exist"));
+
+    eprintln!("please paste the token found on https://crates.io/me below");
+    let mut token = String::new();
+    std::io::stdin().lock().read_line(&mut token)?;
+    cmd!("cargo", "login").stdin(token).run()?;
+    run!(
+        "cargo",
+        "publish",
+        "--package",
+        main_package.name.as_str(),
+        "--dry-run",
+        "--allow-dirty"
+    )?;
+
+    let version = main_package.version.to_string();
+    let tag = format!("v{version}");
+    run!("git", "commit", "--all", "--message", &tag)?;
+    run!(
+        "git",
+        "tag",
+        "--annotate",
+        &tag,
+        "--message",
+        format!("release {tag}")
+    )?;
+
+    run!("cargo", "publish", "--package", main_package.name.as_str())?;
+    run!("git", "push")?;
+    run!("git", "push", tag)?;
+
+    Ok(())
 }

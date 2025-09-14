@@ -42,14 +42,13 @@ pub fn nix_shell<S: AsRef<str>>(script: S) -> Result<devx_cmd::Child, DynError> 
 
 pub fn try_exit_status(error: &devx_cmd::Error) -> Result<u32, String> {
     let msg = error.to_string();
-    let maybe_code: Option<u32> = msg
-        .split("exit status:")
-        .nth(1)
-        .map(|m| {
-            let code_str = m.chars().take_while(|&c| c != '\n').collect::<String>();
-            code_str.trim().parse().ok()
-        })
-        .flatten();
+    let maybe_code: Option<u32> = msg.split("exit status:").nth(1).and_then(|m| {
+        let code_str = m
+            .chars()
+            .take_while(|&c| " 0123456789".contains(c))
+            .collect::<String>();
+        code_str.trim().parse().ok()
+    });
 
     match maybe_code {
         Some(code) => Ok(code),
