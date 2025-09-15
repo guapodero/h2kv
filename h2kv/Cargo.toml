@@ -10,6 +10,7 @@ rust-version = "1.88"
 [dependencies]
 log.workspace = true
 env_logger.workspace = true
+leveldb-rs-binding = "1.0"
 anyhow = "1"
 bytes = "1"
 http = "1"
@@ -29,7 +30,3 @@ pathdiff = "0.2"
 mime2ext = "0.1"
 mediatype = "0.20"
 headers-accept = "0.2"
-
-[dependencies.leveldb-rs-binding]
-git = "https://github.com/rim99/leveldb-rs-binding.git"
-rev = "a6eb341"
