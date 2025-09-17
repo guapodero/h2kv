@@ -9,3 +9,6 @@ log.workspace = true
 env_logger.workspace = true
 devx-cmd = "0.5"
 cargo_metadata = "0.22"
+parse-changelog = { version = "0.6", default-features = false }
+semver = "1"
+toml_edit = "0.23"

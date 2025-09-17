@@ -2,7 +2,7 @@ use std::fs;
 
 use devx_cmd::{read, run};
 
-use crate::{DynError, nix_shell};
+use crate::prelude::*;
 
 pub struct TlsProxy {
     proxy_pid: String,

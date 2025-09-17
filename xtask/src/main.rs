@@ -1,9 +1,10 @@
 use std::{env, fs, io::BufRead, process};
 
-use cargo_metadata::MetadataCommand;
+use cargo_metadata::{Metadata, MetadataCommand, Package};
 use devx_cmd::{cmd, read, run};
+use parse_changelog::Release;
 
-use xtask::{DynError, ServerProcess, TlsProxy, io_error, nix_shell, try_exit_status};
+use xtask::{ServerProcess, TlsProxy, prelude::*};
 
 fn main() {
     if let Err(e) = try_main() {
@@ -24,7 +25,6 @@ fn try_main() -> Result<(), DynError> {
     let task = env::args().nth(1);
     match task.as_deref() {
         Some("test") => test_integration()?,
-        Some("doc") => docs_cli()?,
         Some("release-stage") => release_stage()?,
         Some("release-push") => release_push()?,
         _ => print_help(),
@@ -38,8 +38,7 @@ fn print_help() {
         "Tasks:
 
 test                run integration tests
-doc                 generate CLI.txt
-release-stage       update docs, dependencies, changelog
+release-stage       verify changelog. update version, docs, dependencies
 release-push        push release commit and publish to cargo registry
 "
     )
@@ -79,36 +78,48 @@ fn test_integration() -> Result<(), DynError> {
     })
 }
 
-fn docs_cli() -> Result<(), DynError> {
-    let bin_path = ServerProcess::bin_path()?;
-    let output = read!(bin_path, "--help")?;
-    fs::write("CLI.txt", output)?;
-    Ok(())
-}
-
 fn release_stage() -> Result<(), DynError> {
     let changes = read!("git", "status", "--porcelain")?;
-    if !changes.is_empty() {
-        eprintln!("{changes}");
-        eprintln!("commit existing changes and try again");
-        std::process::exit(2);
+    let change_lines = changes.lines().collect::<Vec<_>>();
+    match change_lines.as_slice() {
+        [] => (),
+        [changelog] if *changelog == " M CHANGELOG.md" => (),
+        _ => {
+            eprintln!("{changes}");
+            eprintln!("commit existing changes and try again");
+            std::process::exit(2);
+        }
     }
 
+    let md = MetadataCommand::new().exec()?;
+    let changelog_path = md.workspace_root.join("CHANGELOG.md");
+    let changelog = fs::read_to_string(changelog_path)?;
+    let head_release = parse_changelog::parse(&changelog)?[0].clone();
+
+    let changelog_tag = format!("v{}", head_release.version);
+    let changelog_updated = is_error(&mut cmd!("git", "describe", changelog_tag));
+    if !changelog_updated {
+        summarize_unlogged_commits(&head_release)?;
+    }
+
+    let main_package = main_package(&md);
+    let mut main_package_toml =
+        fs::read_to_string(&main_package.manifest_path)?.parse::<toml_edit::DocumentMut>()?;
+    main_package_toml["package"]["version"] = toml_edit::value(head_release.version.to_string());
+    fs::write(
+        &main_package.manifest_path,
+        main_package_toml.to_string().as_bytes(),
+    )?;
+
     docs_cli()?;
-    nix_shell("release-plz update")?.wait()?;
+    run!("cargo", "update")?;
 
     Ok(())
 }
 
 fn release_push() -> Result<(), DynError> {
     let md = MetadataCommand::new().exec()?;
-    let root = md.workspace_root.to_string();
-    let workspace_name = root.rsplit('/').next().unwrap();
-    let packages = md.workspace_packages();
-    let main_package = packages
-        .into_iter()
-        .find(|p| p.name.as_str() == workspace_name)
-        .unwrap_or_else(|| panic!("member with name {workspace_name} should exist"));
+    let main_package = main_package(&md);
 
     eprintln!("please paste the token found on https://crates.io/me below");
     let mut token = String::new();
@@ -136,8 +147,60 @@ fn release_push() -> Result<(), DynError> {
     )?;
 
     run!("cargo", "publish", "--package", main_package.name.as_str())?;
-    run!("git", "push")?;
-    run!("git", "push", tag)?;
+    run!("git", "push", "--follow-tags")?;
 
+    Ok(())
+}
+
+fn summarize_unlogged_commits(head_release: &Release) -> Result<(), DynError> {
+    let unlogged = read!(
+        "git",
+        "log",
+        format!("v{}..HEAD", head_release.version),
+        "--pretty=oneline",
+        "--abbrev-commit"
+    )?;
+    let unlogged = unlogged.lines().collect::<Vec<_>>();
+
+    let mut version = semver::Version::parse(head_release.version)?;
+    if !unlogged.is_empty() {
+        eprintln!(
+            "changelog needs to be updated for {} commits since {}",
+            unlogged.len(),
+            head_release.title,
+        );
+
+        for line in unlogged.iter() {
+            eprintln!("{line}");
+            let msg = line.split(' ').nth(1).unwrap();
+            if msg.starts_with("feat") {
+                version.minor += 1;
+            } else if msg.starts_with("fix") {
+                version.patch += 1;
+            }
+        }
+
+        eprintln!("next version: {version}");
+
+        std::process::exit(2);
+    }
+
+    Ok(())
+}
+
+fn main_package(md: &Metadata) -> &Package {
+    let root = md.workspace_root.to_string();
+    let workspace_name = root.rsplit('/').next().unwrap();
+    let packages = md.workspace_packages();
+    packages
+        .into_iter()
+        .find(|p| p.name.as_str() == workspace_name)
+        .unwrap_or_else(|| panic!("member with name {workspace_name} should exist"))
+}
+
+fn docs_cli() -> Result<(), DynError> {
+    let bin_path = ServerProcess::bin_path()?;
+    let output = read!(bin_path, "--help")?;
+    fs::write("CLI.txt", output)?;
     Ok(())
 }
