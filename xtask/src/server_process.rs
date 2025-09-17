@@ -2,7 +2,7 @@ use std::fs;
 
 use devx_cmd::{Cmd, read, run};
 
-use crate::DynError;
+use crate::prelude::*;
 
 pub struct ServerProcess {
     server_pid: String,
