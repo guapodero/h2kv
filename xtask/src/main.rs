@@ -94,7 +94,7 @@ fn release_stage() -> Result<(), DynError> {
     let md = MetadataCommand::new().exec()?;
     let changelog_path = md.workspace_root.join("CHANGELOG.md");
     let changelog = fs::read_to_string(changelog_path)?;
-    let head_release = parse_changelog::parse(&changelog)?[0].clone();
+    let head_release = parse_changelog::parse(&changelog)?[1].clone();
 
     let changelog_tag = format!("v{}", head_release.version);
     let changelog_updated = is_error(&mut cmd!("git", "describe", changelog_tag));
@@ -140,6 +140,7 @@ fn release_push() -> Result<(), DynError> {
     run!(
         "git",
         "tag",
+        "--sign",
         "--annotate",
         &tag,
         "--message",
@@ -160,29 +161,43 @@ fn summarize_unlogged_commits(head_release: &Release) -> Result<(), DynError> {
         "--pretty=oneline",
         "--abbrev-commit"
     )?;
-    let unlogged = unlogged.lines().collect::<Vec<_>>();
+    let unlogged = unlogged
+        .lines()
+        .take_while(|line| !line.ends_with(&format!(" v{}", head_release.version)))
+        .collect::<Vec<_>>();
 
-    let mut version = semver::Version::parse(head_release.version)?;
     if !unlogged.is_empty() {
-        eprintln!(
-            "changelog needs to be updated for {} commits since {}",
-            unlogged.len(),
-            head_release.title,
-        );
-
-        for line in unlogged.iter() {
-            eprintln!("{line}");
+        let mut bump = (false, false);
+        let mut bump_commits = vec![];
+        for line in unlogged.into_iter() {
             let msg = line.split(' ').nth(1).unwrap();
             if msg.starts_with("feat") {
-                version.minor += 1;
+                bump.0 = true;
+                bump_commits.push(line);
             } else if msg.starts_with("fix") {
-                version.patch += 1;
+                bump.1 = true;
+                bump_commits.push(line);
             }
         }
 
-        eprintln!("next version: {version}");
+        if !bump_commits.is_empty() {
+            eprintln!(
+                "changelog needs to be updated for {} commits since {}\n{}",
+                bump_commits.len(),
+                head_release.title,
+                bump_commits.join("\n"),
+            );
 
-        std::process::exit(2);
+            let mut version = semver::Version::parse(head_release.version)?;
+            if bump.0 {
+                version.minor += 1;
+            } else if bump.1 {
+                version.patch += 1;
+            }
+            eprintln!("next version: {version}");
+
+            std::process::exit(2);
+        }
     }
 
     Ok(())
