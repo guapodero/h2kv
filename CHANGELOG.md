@@ -2,6 +2,11 @@
 > Refer to: https://openchangelog.com/blog/changelog-md
 > Sections: added, changes, fixes, deprecations, removals, and security
 
+## [0.1.2] - 2025-09-17
+
+### Fixes
+* Cargo package configuration
+
 ## [0.1.1] - 2025-09-17
 
 ### Fixes
