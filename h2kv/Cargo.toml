@@ -1,6 +1,6 @@
 [package]
 name = "h2kv"
-version = "0.1.0"
+version = "0.1.1"
 description = "HTTP/2 interface for key-value storage systems"
 repository = "https://github.com/guapodero/h2kv"
 license = "MIT OR Apache-2.0"
