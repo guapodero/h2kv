@@ -1,57 +1,65 @@
-use std::process;
-
-use devx_cmd::Cmd;
-
 mod server_process;
 pub use server_process::*;
 
 mod proxy;
 pub use proxy::*;
 
-pub type DynError = Box<dyn std::error::Error>;
+pub mod prelude {
+    use std::process;
 
-pub fn io_error(msg: &str) -> DynError {
-    std::io::Error::other(msg).into()
-}
+    use devx_cmd::{Cmd, cmd};
 
-pub fn nix_shell<S: AsRef<str>>(script: S) -> Result<devx_cmd::Child, DynError> {
-    Cmd::new("nix")
-        .arg("--version")
-        .log_err(None)
-        .spawn_with(process::Stdio::null(), process::Stdio::null())
-        .map_err(|e| std::io::Error::other(format!("nix executable not found: {e}")))?;
+    pub type DynError = Box<dyn std::error::Error>;
 
-    let child = Cmd::new("nix")
-        .env(
-            "NIX_CONFIG",
-            "extra-experimental-features = nix-command flakes",
-        )
-        .args(&[
-            "develop",
-            "path:tests",
-            "--command",
-            "sh",
-            "-c",
-            script.as_ref(),
-        ])
-        .log_err(Some(log::Level::Debug))
-        .spawn()?;
+    pub fn nix_shell<S: AsRef<str>>(script: S) -> Result<devx_cmd::Child, DynError> {
+        if is_error(&mut cmd!("nix", "--version")) {
+            return Err(io_error("nix executable not found"));
+        }
 
-    Ok(child)
-}
+        let child = Cmd::new("nix")
+            .env(
+                "NIX_CONFIG",
+                "extra-experimental-features = nix-command flakes",
+            )
+            .args(&[
+                "develop",
+                "path:tests",
+                "--command",
+                "sh",
+                "-c",
+                script.as_ref(),
+            ])
+            .log_err(Some(log::Level::Debug))
+            .spawn()?;
 
-pub fn try_exit_status(error: &devx_cmd::Error) -> Result<u32, String> {
-    let msg = error.to_string();
-    let maybe_code: Option<u32> = msg.split("exit status:").nth(1).and_then(|m| {
-        let code_str = m
-            .chars()
-            .take_while(|&c| " 0123456789".contains(c))
-            .collect::<String>();
-        code_str.trim().parse().ok()
-    });
+        Ok(child)
+    }
 
-    match maybe_code {
-        Some(code) => Ok(code),
-        None => Err(msg),
+    pub fn is_error(cmd: &mut Cmd) -> bool {
+        cmd.log_err(None)
+            .spawn_with(process::Stdio::null(), process::Stdio::null())
+            .unwrap()
+            .wait()
+            .is_err_and(|e| !matches!(try_exit_status(&e), Ok(0)))
+    }
+
+    pub fn try_exit_status(error: &devx_cmd::Error) -> Result<u32, String> {
+        let msg = error.to_string();
+        let maybe_code: Option<u32> = msg.split("exit status:").nth(1).and_then(|m| {
+            let code_str = m
+                .chars()
+                .take_while(|&c| " 0123456789".contains(c))
+                .collect::<String>();
+            code_str.trim().parse().ok()
+        });
+
+        match maybe_code {
+            Some(code) => Ok(code),
+            None => Err(msg),
+        }
+    }
+
+    pub fn io_error(msg: &str) -> DynError {
+        std::io::Error::other(msg).into()
     }
 }

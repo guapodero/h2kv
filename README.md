@@ -5,7 +5,6 @@ A simple object storage system. Provides an unopinionated HTTP/2 interface for
 based on features described in public RFCs.
 
 [![Crates.io](https://img.shields.io/crates/v/h2kv.svg)](https://crates.io/crates/h2kv)
-[![Docs.rs](https://docs.rs/h2kv/badge.svg)](https://docs.rs/h2kv)
 [![CI](https://github.com/guapodero/h2kv/workflows/CI/badge.svg)](https://github.com/guapodero/h2kv/actions)
 
 ## Goals
