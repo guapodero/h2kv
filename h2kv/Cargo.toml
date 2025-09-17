@@ -1,9 +1,13 @@
 [package]
 name = "h2kv"
 version = "0.1.1"
+authors = ["Daniel James Baumann <dan.james.baumann@gmail.com>"]
 description = "HTTP/2 interface for key-value storage systems"
-repository = "https://github.com/guapodero/h2kv"
+readme = "../README.md"
 license = "MIT OR Apache-2.0"
+repository = "https://github.com/guapodero/h2kv"
+keywords = ["http", "leveldb"]
+categories = ["web-programming"]
 edition = "2024"
 rust-version = "1.88"
 
