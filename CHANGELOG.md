@@ -2,6 +2,11 @@
 > Refer to: https://openchangelog.com/blog/changelog-md
 > Sections: added, changes, fixes, deprecations, removals, and security
 
+## [0.1.1] - 2025-09-17
+
+### Fixes
+* Docs and release process
+
 ## [0.1.0] - 2025-09-14
 
 ### Added
