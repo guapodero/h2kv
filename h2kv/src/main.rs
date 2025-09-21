@@ -7,8 +7,10 @@ use tokio::signal::unix::{SignalKind, signal as unix_signal};
 
 #[derive(Debug, AutoArgs)]
 struct Opt {
+    /// print the package version and exit
+    version: bool,
     /// directory to use for storage engine files
-    storage_dir: PathBuf,
+    storage_dir: Option<PathBuf>,
     /// listening port for TCP connections, default: 5928
     port: Option<i32>,
     /// directory to synchronize with the database and "host" on start and SIGHUP
@@ -27,8 +29,17 @@ impl TryFrom<Opt> for h2kv::Config {
     type Error = anyhow::Error;
 
     fn try_from(value: Opt) -> std::result::Result<Self, Self::Error> {
-        if !value.storage_dir.as_path().is_dir() {
-            bail!("storage-dir {:?} is not a directory", &value.storage_dir);
+        if value.version {
+            println!("{} {}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
+            std::process::exit(0);
+        }
+
+        match value.storage_dir {
+            None => bail!("storage-dir is required"),
+            Some(dir) if !dir.as_path().is_dir() => {
+                bail!("storage-dir {dir:?} is not a directory")
+            }
+            _ => (),
         }
 
         match value.sync_dir {
@@ -58,7 +69,7 @@ impl TryFrom<Opt> for h2kv::Config {
 
         Ok(Self {
             port: value.port.unwrap_or(5928),
-            storage_dir: value.storage_dir,
+            storage_dir: value.storage_dir.unwrap(),
             sync_dir: value.sync_dir,
             sync_write: value.sync_write,
             daemon: value.daemon,

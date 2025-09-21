@@ -62,6 +62,7 @@ async fn handle_request(
             parts.status = status;
             parts.headers = headers.unwrap_or_default();
             let response = Response::from_parts(parts, ());
+            log::trace!("sent {response:?}");
             let mut send = respond.send_response(response, false)?;
             send.send_data(body.unwrap_or_default(), true)?;
             Ok(())
