@@ -12,7 +12,7 @@ pub mod prelude {
     pub type DynError = Box<dyn std::error::Error>;
 
     pub fn nix_shell<S: AsRef<str>>(script: S) -> Result<devx_cmd::Child, DynError> {
-        if is_error(&mut cmd!("nix", "--version")) {
+        if is_error(cmd!("nix", "--version")) {
             return Err(io_error("nix executable not found"));
         }
 
@@ -35,8 +35,9 @@ pub mod prelude {
         Ok(child)
     }
 
-    pub fn is_error(cmd: &mut Cmd) -> bool {
-        cmd.log_err(None)
+    pub fn is_error(cmd: Cmd) -> bool {
+        cmd.clone()
+            .log_err(None)
             .spawn_with(process::Stdio::null(), process::Stdio::null())
             .unwrap()
             .wait()
@@ -59,7 +60,7 @@ pub mod prelude {
         }
     }
 
-    pub fn io_error(msg: &str) -> DynError {
-        std::io::Error::other(msg).into()
+    pub fn io_error<S: AsRef<str>>(msg: S) -> DynError {
+        std::io::Error::other(msg.as_ref()).into()
     }
 }

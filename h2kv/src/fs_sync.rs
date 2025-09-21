@@ -42,7 +42,12 @@ pub fn store_each_file(sync_dir: &Path, db: Arc<impl StorageBackend>) -> Result<
         let storage_key = storage_key.as_path();
 
         let empty_headers = http::HeaderMap::default();
-        let negotiated = NegotiatedPath::for_write(storage_key, &empty_headers)?.unwrap();
+        let mut negotiated = NegotiatedPath::for_write(storage_key, &empty_headers)?.unwrap();
+        if storage_key.extension().is_some()
+            && let Err(e) = negotiated.guess_media_type()
+        {
+            log::warn!("media type guess failed for {negotiated}: {e}");
+        }
         let mut extensions = PathExtensions::get_for_path(storage_key, db.clone());
 
         let content = fs::read(&file_path)?;
@@ -75,9 +80,11 @@ pub fn write_each_key(
 
         match db.get(storage_key)? {
             Some(stored) => {
-                fs::write(&file_path, stored)?;
+                let file_directory = file_path.parent().unwrap();
+                fs::create_dir_all(file_directory)?;
+                fs::write(file_path, stored)?;
             }
-            None => fs::remove_file(&file_path).or_else(|e| match e.kind() {
+            None => fs::remove_file(file_path).or_else(|e| match e.kind() {
                 // storage key was added and then removed
                 io::ErrorKind::NotFound => Ok(()),
                 _ => Err(e),

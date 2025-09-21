@@ -47,11 +47,11 @@ release-push        push release commit and publish to cargo registry
 fn test_integration() -> Result<(), DynError> {
     let sync_dir = read!("mktemp", "--directory")?;
     let sync_dir = sync_dir.trim();
-    let sync_file = format!("{sync_dir}/sync_file");
+    let sync_file = format!("{sync_dir}/sync_file.wasm");
     fs::write(&sync_file, b"sync_file contents")?;
 
-    let server = ServerProcess::try_start(8080, sync_dir)?;
-    let _proxy = TlsProxy::try_start(8443, 8080)?;
+    let server = ServerProcess::try_start(9080, sync_dir)?;
+    let _proxy = TlsProxy::try_start(8443, 9080)?;
 
     let result = nix_shell(
         "hurl \
@@ -66,15 +66,20 @@ fn test_integration() -> Result<(), DynError> {
         drop(server);
         // wait for filesystem sync to finish
         std::thread::sleep(std::time::Duration::from_millis(500));
-        let updated_sync_file = String::from_utf8(fs::read(sync_file)?)?;
-        assert_eq!(updated_sync_file, "sync_file contents updated");
+        let updated_sync_file = fs::read(sync_file).ok();
+        assert_eq!(
+            updated_sync_file,
+            Some(b"sync_file contents updated".to_vec())
+        );
+        let new_file = fs::read(format!("{sync_dir}/new/file2.txt")).ok();
+        assert_eq!(new_file, Some(b"file2 contents".to_vec()));
         fs::remove_dir_all(sync_dir)?;
     }
 
     result.map_err(|e| match try_exit_status(&e) {
         Ok(4) => io_error("test failure"),
         Ok(3) => io_error("runtime error"),
-        _ => io_error(&format!("unexpected error: {e}")),
+        _ => io_error(format!("unexpected error: {e}")),
     })
 }
 
@@ -97,7 +102,7 @@ fn release_stage() -> Result<(), DynError> {
     let head_release = parse_changelog::parse(&changelog)?[1].clone();
 
     let changelog_tag = format!("v{}", head_release.version);
-    let changelog_updated = is_error(&mut cmd!("git", "describe", changelog_tag));
+    let changelog_updated = is_error(cmd!("git", "describe", changelog_tag));
     if !changelog_updated {
         summarize_unlogged_commits(&head_release)?;
     }

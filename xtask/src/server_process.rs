@@ -1,6 +1,6 @@
 use std::fs;
 
-use devx_cmd::{Cmd, read, run};
+use devx_cmd::{Cmd, cmd, read, run};
 
 use crate::prelude::*;
 
@@ -36,10 +36,17 @@ impl ServerProcess {
             .log_err(Some(log::Level::Debug))
             .spawn()?
             .wait()?;
-        let server_pid = read!("cat", pid_file)?;
+        let server_pid = read!("cat", pid_file)?.trim().to_string();
+
+        // wait for server to start
+        std::thread::sleep(std::time::Duration::from_millis(500));
+        let process_inactive = is_error(cmd!("ps", "--quick-pid", &server_pid));
+        if process_inactive {
+            return Err(io_error(format!("process {server_pid} failed to start")));
+        }
 
         Ok(Self {
-            server_pid: server_pid.trim().to_string(),
+            server_pid,
             temp_dir: temp_dir.to_string(),
         })
     }

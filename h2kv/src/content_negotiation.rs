@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::Arc;
 
-use anyhow::{Result, bail};
+use anyhow::{Result, anyhow, bail};
 use headers_accept::Accept;
 use http::{HeaderMap, HeaderValue, header};
 use mediatype::{MediaType, names::*};
@@ -113,6 +113,15 @@ impl<'a> NegotiatedPath<'a> {
             // otherwise not found
             _ => Ok(None),
         }
+    }
+
+    pub fn guess_media_type(&mut self) -> Result<()> {
+        let ext = self.storage_extension();
+        let guess = new_mime_guess::from_ext(&ext)
+            .first_raw()
+            .ok_or(anyhow!("no known media type for '.{ext}' extension"))?;
+        self.media_type = MediaType::parse(guess)?;
+        Ok(())
     }
 
     pub fn storage_extension(&self) -> std::borrow::Cow<'_, str> {
