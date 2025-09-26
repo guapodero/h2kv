@@ -13,7 +13,7 @@ struct Opt {
     storage_dir: Option<PathBuf>,
     /// listening port for TCP connections, default: 5928
     port: Option<i32>,
-    /// directory to synchronize with the database and "host" on start and SIGHUP
+    /// directory to sync with the database on start and SIGHUP
     sync_dir: Option<PathBuf>,
     /// write to the synchronized directory on exit and SIGHUP
     sync_write: bool,
@@ -21,7 +21,7 @@ struct Opt {
     daemon: bool,
     /// PID file, ignored unless --daemon is set
     pidfile: Option<PathBuf>,
-    /// file to send daemon log messages, ignored unless --daemon is set
+    /// file to send log messages, ignored unless --daemon is set
     log_filename: Option<PathBuf>,
 }
 
@@ -176,7 +176,7 @@ async fn signal(kind: SignalKind) -> std::io::Result<()> {
 }
 
 fn help_intercept() {
-    let args = std::env::args().into_iter().collect::<Vec<_>>();
+    let args = std::env::args().collect::<Vec<_>>();
     if args.contains(&"--help".to_string()) {
         let msg_lines = Opt::help();
         let mut msg_lines = msg_lines

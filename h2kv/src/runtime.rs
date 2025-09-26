@@ -85,7 +85,7 @@ pub struct FilesystemActions<'a> {
 impl<'a> FilesystemActions<'a> {
     pub fn do_read(&self, db: Arc<impl StorageBackend>) -> Result<()> {
         if let Some(sync_dir) = self.sync_dir {
-            fs_sync::store_each_file(sync_dir, db, &self.ignore)?;
+            fs_sync::store_each_file(sync_dir, db, self.ignore)?;
             let update_keys = fs_sync::collect_updates(self.updates_rx);
             log::info!(
                 "sync-dir: stored {} objects from {sync_dir:?}",
@@ -100,7 +100,7 @@ impl<'a> FilesystemActions<'a> {
             && let Some(sync_dir) = self.sync_dir
         {
             let update_keys = fs_sync::collect_updates(self.updates_rx);
-            fs_sync::write_each_key(sync_dir, db, &update_keys, &self.ignore)?;
+            fs_sync::write_each_key(sync_dir, db, &update_keys, self.ignore)?;
             log::info!(
                 "sync-write: wrote {} updates to {sync_dir:?}",
                 update_keys.len()

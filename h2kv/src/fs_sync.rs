@@ -45,7 +45,7 @@ pub fn store_each_file(
         let relative_path = pathdiff::diff_paths(&file_path, sync_dir).unwrap();
         let storage_key = Path::new("/").join(relative_path);
         let storage_key = storage_key.as_path();
-        if ignore.matches(&storage_key) {
+        if ignore.matches(storage_key) {
             continue;
         }
 

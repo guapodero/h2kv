@@ -1,4 +1,6 @@
-use std::{env, fs, io::BufRead, process};
+use std::collections::VecDeque;
+use std::io::BufRead;
+use std::{env, fs};
 
 use cargo_metadata::{Metadata, MetadataCommand, Package};
 use devx_cmd::{cmd, read, run};
@@ -9,7 +11,7 @@ use xtask::{ServerProcess, TlsProxy, prelude::*};
 fn main() {
     if let Err(e) = try_main() {
         eprintln!("{}", e);
-        process::exit(-1);
+        std::process::exit(-1);
     }
 }
 
@@ -25,6 +27,7 @@ fn try_main() -> Result<(), DynError> {
     let task = env::args().nth(1);
     match task.as_deref() {
         Some("test") => test_integration()?,
+        Some("doc") => docs_cli()?,
         Some("release-stage") => release_stage()?,
         Some("release-push") => release_push()?,
         _ => print_help(),
@@ -45,6 +48,8 @@ release-push        push release commit and publish to cargo registry
 }
 
 fn test_integration() -> Result<(), DynError> {
+    run!("cargo", "build")?;
+
     let sync_dir = read!("mktemp", "--directory")?;
     let sync_dir = sync_dir.trim();
 
@@ -228,7 +233,38 @@ fn main_package(md: &Metadata) -> &Package {
 
 fn docs_cli() -> Result<(), DynError> {
     let bin_path = ServerProcess::bin_path()?;
-    let output = read!(bin_path, "--help")?;
-    fs::write("CLI.txt", output)?;
+    let docs = read!("sh", "-c", format!("{bin_path} --help 2>&1 | tee"))?;
+    let readme = fs::read_to_string("README.md")?;
+
+    let mut docs_lines: VecDeque<&str> = docs.lines().collect();
+    let mut readme_lines: Vec<&str> = readme.lines().collect();
+    let mut mode = 0;
+    for (i, line) in readme_lines.clone().into_iter().enumerate() {
+        if matches!((mode, line), (0, "### CLI") | (1, "```txt") | (2, "```")) {
+            mode += 1;
+            if mode < 3 {
+                continue;
+            }
+        }
+
+        if mode == 2 {
+            if let Some(doc_line) = docs_lines.pop_front() {
+                readme_lines[i] = doc_line.trim_end();
+            } else {
+                readme_lines.remove(i);
+            }
+        } else if mode == 3 {
+            if let Some(doc_line) = docs_lines.pop_front() {
+                readme_lines.insert(i, doc_line.trim_end());
+            } else {
+                break;
+            }
+        }
+    }
+
+    let mut updated = readme_lines.into_iter().collect::<Vec<_>>().join("\n");
+    updated.push('\n');
+    fs::write("README.md", updated)?;
+
     Ok(())
 }

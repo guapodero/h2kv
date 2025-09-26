@@ -50,7 +50,37 @@ This project is possible thanks to the authors of the
 
 ## Usage
 
-[CLI.txt](CLI.txt)
+### Example
+
+```sh
+# only file sync storage keys ending with .html
+export H2KV_IGNORE="**/* !/**/*.html"
+export RUST_LOG=h2kv=warn
+h2kv \
+  --storage-dir /tmp --port 8080 --sync-dir . \
+  --daemon --pidfile /tmp/h2kv.pid --log-filename /var/log/h2kv.log
+
+# re-sync when src directory changes
+PID="$(cat /tmp/h2kv.pid)"
+watchexec --watch src kill -HUP $PID
+```
+
+### CLI
+```txt
+USAGE:
+  h2kv  --storage-dir STRING [--port i32] [--sync-dir STRING] [--sync-write] [--daemon] [--pidfile STRING] [--log-filename STRING]
+
+  --storage-dir STRING    directory to use for storage engine files
+  [--port i32]            listening port for TCP connections, default: 5928
+  [--sync-dir STRING]     directory to synchronize with the database and "host" on start and SIGHUP
+  [--sync-write]          write to the synchronized directory on exit and SIGHUP
+  [--daemon]              fork into background process
+  [--pidfile STRING]      PID file, ignored unless --daemon is set
+  [--log-filename STRING] file to send daemon log messages, ignored unless --daemon is set
+
+
+For more information try --help
+```
 
 ## License
 

@@ -32,7 +32,7 @@ impl IgnoreFilter {
     }
 
     pub fn try_from_str(globs: &str) -> Result<Self> {
-        let mut globs = extract_globs(&globs);
+        let mut globs = extract_globs(globs);
         globs.sort_by(|a, b| a.trim_start_matches('!').cmp(b.trim_start_matches('!')));
         globs.reverse();
 
@@ -97,7 +97,7 @@ fn extract_globs(input: &str) -> Vec<&str> {
             if line.starts_with('#') {
                 None
             } else {
-                let line = line.split('#').nth(0).unwrap().trim();
+                let line = line.split('#').next().unwrap().trim();
                 Some(line)
             }
         })
