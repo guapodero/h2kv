@@ -67,11 +67,17 @@ impl TryFrom<Opt> for h2kv::Config {
             );
         }
 
+        let sync_ignore = h2kv::IgnoreFilter::try_from_env()?;
+        if sync_ignore.is_active() {
+            log::warn!("ignore filter {sync_ignore}");
+        }
+
         Ok(Self {
             port: value.port.unwrap_or(5928),
             storage_dir: value.storage_dir.unwrap(),
             sync_dir: value.sync_dir,
             sync_write: value.sync_write,
+            sync_ignore,
             daemon: value.daemon,
             pidfile: value.pidfile,
             log_filename: value.log_filename,
@@ -88,6 +94,7 @@ fn main() -> Result<()> {
         env_logger::try_init()?;
     }
 
+    help_intercept();
     let config: h2kv::Config = Opt::from_args().try_into()?;
 
     let (updates_tx, updates_rx) = mpsc::channel::<PathBuf>();
@@ -118,6 +125,7 @@ fn main() -> Result<()> {
     let files = h2kv::runtime::FilesystemActions {
         sync_dir: config.sync_dir.as_deref(),
         sync_write: config.sync_write,
+        ignore: &config.sync_ignore,
         updates_rx: &updates_rx,
     };
 
@@ -165,4 +173,27 @@ fn main() -> Result<()> {
 async fn signal(kind: SignalKind) -> std::io::Result<()> {
     unix_signal(kind)?.recv().await;
     Ok(())
+}
+
+fn help_intercept() {
+    let args = std::env::args().into_iter().collect::<Vec<_>>();
+    if args.contains(&"--help".to_string()) {
+        let msg_lines = Opt::help();
+        let mut msg_lines = msg_lines
+            .lines()
+            .filter(|l| *l != "For more information try --help")
+            .collect::<Vec<_>>();
+        let ignore_filter_description = format!(
+            "{}: {}",
+            h2kv::IgnoreFilter::ENV_NAME,
+            h2kv::IgnoreFilter::ENV_DESCRIPTION
+        );
+        msg_lines.append(&mut vec![
+            "Environment Variables:",
+            &ignore_filter_description,
+        ]);
+        eprintln!("{}", msg_lines.join("\n"));
+
+        std::process::exit(1);
+    }
 }

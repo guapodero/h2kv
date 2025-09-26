@@ -5,7 +5,7 @@ use std::sync::{Arc, mpsc::Receiver};
 
 use anyhow::{Result, anyhow, bail};
 
-use crate::{Config, StorageBackend, fs_sync};
+use crate::{Config, IgnoreFilter, StorageBackend, fs_sync};
 
 /// On success, returns `Ok(None)` to parent and `Ok(Some(resources))` to daemon.
 pub fn spawn_daemon<F, L>(config: &Config, lock_resources: F) -> Result<Option<L>>
@@ -78,13 +78,14 @@ where
 pub struct FilesystemActions<'a> {
     pub sync_dir: Option<&'a Path>,
     pub sync_write: bool,
+    pub ignore: &'a IgnoreFilter,
     pub updates_rx: &'a Receiver<PathBuf>,
 }
 
 impl<'a> FilesystemActions<'a> {
     pub fn do_read(&self, db: Arc<impl StorageBackend>) -> Result<()> {
         if let Some(sync_dir) = self.sync_dir {
-            fs_sync::store_each_file(sync_dir, db.clone())?;
+            fs_sync::store_each_file(sync_dir, db, &self.ignore)?;
             let update_keys = fs_sync::collect_updates(self.updates_rx);
             log::info!(
                 "sync-dir: stored {} objects from {sync_dir:?}",
@@ -99,7 +100,7 @@ impl<'a> FilesystemActions<'a> {
             && let Some(sync_dir) = self.sync_dir
         {
             let update_keys = fs_sync::collect_updates(self.updates_rx);
-            fs_sync::write_each_key(sync_dir, db, &update_keys)?;
+            fs_sync::write_each_key(sync_dir, db, &update_keys, &self.ignore)?;
             log::info!(
                 "sync-write: wrote {} updates to {sync_dir:?}",
                 update_keys.len()

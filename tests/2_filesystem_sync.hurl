@@ -16,4 +16,12 @@ PUT https://localhost:{{PORT}}/new/file2.txt
 `file2 contents`
 HTTP/2 201
 
-# the contents of the file are verified after all tests are completed
+# the contents of updated files are verified after all tests are completed
+
+GET https://localhost:{{PORT}}/ignored_read
+HTTP/2 404
+
+PUT https://localhost:{{PORT}}/ignored_write
+`ignored`
+HTTP/2 201
+

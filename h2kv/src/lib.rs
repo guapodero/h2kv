@@ -7,6 +7,9 @@ pub use storage::{StorageBackend, StorageFactory};
 mod content_negotiation;
 mod fs_sync;
 
+mod ignore_filter;
+pub use ignore_filter::IgnoreFilter;
+
 use std::path::PathBuf;
 
 #[derive(Debug, Clone)]
@@ -15,6 +18,7 @@ pub struct Config {
     pub storage_dir: PathBuf,
     pub sync_dir: Option<PathBuf>,
     pub sync_write: bool,
+    pub sync_ignore: IgnoreFilter,
     pub daemon: bool,
     pub pidfile: Option<PathBuf>,
     pub log_filename: Option<PathBuf>,

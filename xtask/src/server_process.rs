@@ -33,6 +33,7 @@ impl ServerProcess {
                 "--log-filename",
                 "/dev/fd/2",
             ])
+            .env("H2KV_IGNORE", "**/* !/sync_file.* !/new/*")
             .log_err(Some(log::Level::Debug))
             .spawn()?
             .wait()?;

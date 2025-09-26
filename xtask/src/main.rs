@@ -47,8 +47,11 @@ release-push        push release commit and publish to cargo registry
 fn test_integration() -> Result<(), DynError> {
     let sync_dir = read!("mktemp", "--directory")?;
     let sync_dir = sync_dir.trim();
+
     let sync_file = format!("{sync_dir}/sync_file.wasm");
     fs::write(&sync_file, b"sync_file contents")?;
+
+    fs::write(format!("{sync_dir}/ignored_read"), b"ignored")?;
 
     let server = ServerProcess::try_start(9080, sync_dir)?;
     let _proxy = TlsProxy::try_start(8443, 9080)?;
@@ -66,13 +69,18 @@ fn test_integration() -> Result<(), DynError> {
         drop(server);
         // wait for filesystem sync to finish
         std::thread::sleep(std::time::Duration::from_millis(500));
+
         let updated_sync_file = fs::read(sync_file).ok();
         assert_eq!(
             updated_sync_file,
             Some(b"sync_file contents updated".to_vec())
         );
+
         let new_file = fs::read(format!("{sync_dir}/new/file2.txt")).ok();
         assert_eq!(new_file, Some(b"file2 contents".to_vec()));
+
+        assert!(!fs::exists(format!("{sync_dir}/ignored_write"))?);
+
         fs::remove_dir_all(sync_dir)?;
     }
 
