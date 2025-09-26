@@ -1,6 +1,6 @@
 [package]
 name = "h2kv"
-version = "0.1.2"
+version = "0.2.0"
 authors = ["Daniel James Baumann <dan.james.baumann@gmail.com>"]
 description = "HTTP/2 interface for key-value storage systems"
 readme = "../README.md"

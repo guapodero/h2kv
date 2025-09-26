@@ -4,6 +4,14 @@
 
 ## [Unreleased]
 
+## [0.2.0] - 2025-09-26
+
+### Added
+* Filter file synchronization using glob patterns
+* Add version option to CLI
+
+### Fixes
+* Guess content types when reading filesystem
 
 ## [0.1.2] - 2025-09-17
 

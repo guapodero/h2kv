@@ -68,18 +68,29 @@ watchexec --watch src kill -HUP $PID
 ### CLI
 ```txt
 USAGE:
-  h2kv  --storage-dir STRING [--port i32] [--sync-dir STRING] [--sync-write] [--daemon] [--pidfile STRING] [--log-filename STRING]
+  h2kv  [--version] [--storage-dir STRING] [--port i32] [--sync-dir STRING] [--sync-write] [--daemon] [--pidfile STRING] [--log-filename STRING]
 
-  --storage-dir STRING    directory to use for storage engine files
+  [--version]             print the package version and exit
+  [--storage-dir STRING]  directory to use for storage engine files
   [--port i32]            listening port for TCP connections, default: 5928
-  [--sync-dir STRING]     directory to synchronize with the database and "host" on start and SIGHUP
+  [--sync-dir STRING]     directory to sync with the database on start and SIGHUP
   [--sync-write]          write to the synchronized directory on exit and SIGHUP
   [--daemon]              fork into background process
   [--pidfile STRING]      PID file, ignored unless --daemon is set
-  [--log-filename STRING] file to send daemon log messages, ignored unless --daemon is set
+  [--log-filename STRING] file to send log messages, ignored unless --daemon is set
 
 
-For more information try --help
+Environment Variables:
+H2KV_IGNORE:
+    Used with --sync-dir option to filter which files are synchronized.
+    Format:
+    String of glob patterns separated by spaces or newline characters.
+    Comments allowed between '#' and end of line.
+    Patterns starting with '!' are treated as exceptions (whitelist).
+    Pattern syntax: https://docs.rs/glob/latest/glob/struct.Pattern.html
+    NOTE: Syntax is similar to .gitignore but not identical.
+    Example: "* !/*.html !/static/**/*"
+
 ```
 
 ## License
