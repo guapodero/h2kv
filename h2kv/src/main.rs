@@ -68,9 +68,6 @@ impl TryFrom<Opt> for h2kv::Config {
         }
 
         let sync_ignore = h2kv::IgnoreFilter::try_from_env()?;
-        if sync_ignore.is_active() {
-            log::warn!("ignore filter {sync_ignore}");
-        }
 
         Ok(Self {
             port: value.port.unwrap_or(5928),
@@ -121,6 +118,10 @@ fn main() -> Result<()> {
     } else {
         lock_resources().map_err(|e| anyhow!("resource lock failure: {e}"))?
     };
+
+    if config.sync_ignore.is_active() {
+        log::warn!("ignore filter {}", config.sync_ignore);
+    }
 
     let files = h2kv::runtime::FilesystemActions {
         sync_dir: config.sync_dir.as_deref(),

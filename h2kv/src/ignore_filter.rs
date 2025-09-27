@@ -17,7 +17,7 @@ impl IgnoreFilter {
     Patterns starting with '!' are treated as exceptions (whitelist).
     Pattern syntax: https://docs.rs/glob/latest/glob/struct.Pattern.html
     NOTE: Syntax is similar to .gitignore but not identical.
-    Example: "* !/*.html !/static/**/*"
+    Example: "**/* !/*.html !/static/**/*"
     "#;
 
     pub fn try_from_env() -> Result<Self> {
