@@ -24,7 +24,7 @@ jobs:
       - name: Cache Rust dependencies
         uses: Swatinem/rust-cache@v2
       - name: Install Nix
-        uses: nixbuild/nix-quick-install-action@v33
+        uses: nixbuild/nix-quick-install-action@v34
       - name: Run tests
         env:
           TMPDIR: ${{ runner.temp }} 
