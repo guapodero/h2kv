@@ -132,6 +132,6 @@ mod tests {
             two  three # c3
             four
         "#;
-        assert_eq!(extract_globs(&input), vec!["one", "two", "three", "four"]);
+        assert_eq!(extract_globs(input), vec!["one", "two", "three", "four"]);
     }
 }
