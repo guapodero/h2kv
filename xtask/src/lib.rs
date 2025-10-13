@@ -10,6 +10,9 @@ pub mod prelude {
     use devx_cmd::{Cmd, cmd};
 
     pub type DynError = Box<dyn std::error::Error>;
+    pub fn dyn_error(msg: &str) -> DynError {
+        std::io::Error::other(msg).into()
+    }
 
     pub fn nix_shell<S: AsRef<str>>(script: S) -> Result<devx_cmd::Child, DynError> {
         if is_error(cmd!("nix", "--version")) {

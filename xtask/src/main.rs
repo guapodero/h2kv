@@ -123,7 +123,20 @@ fn release_stage() -> Result<(), DynError> {
     let main_package = main_package(&md);
     let mut main_package_toml =
         fs::read_to_string(&main_package.manifest_path)?.parse::<toml_edit::DocumentMut>()?;
+
     main_package_toml["package"]["version"] = toml_edit::value(head_release.version.to_string());
+
+    for ReqUpdate { name, major, minor } in dependency_updates(main_package)? {
+        let new_requirement = toml_edit::value(format!("{major}.{minor}"));
+        let dep_toml = &mut main_package_toml["dependencies"][&name];
+        if dep_toml.get("version").is_some() {
+            dep_toml["version"] = new_requirement;
+        } else {
+            main_package_toml["dependencies"][&name] = new_requirement;
+        }
+        eprintln!("updated {name} requirement to {major}.{minor}");
+    }
+
     fs::write(
         &main_package.manifest_path,
         main_package_toml.to_string().as_bytes(),
@@ -267,4 +280,75 @@ fn docs_cli() -> Result<(), DynError> {
     fs::write("README.md", updated)?;
 
     Ok(())
+}
+
+struct ReqUpdate {
+    name: String,
+    major: u64,
+    minor: u64,
+}
+
+fn dependency_updates(package: &Package) -> Result<Vec<ReqUpdate>, DynError> {
+    let index = crates_index::SparseIndex::new_cargo_default()?;
+    let fetch_crate = |crate_name: &str| -> Result<crates_index::Crate, DynError> {
+        let req = index
+            .make_cache_request(crate_name)?
+            .version(ureq::http::Version::HTTP_11)
+            .body(())?;
+        let res = ureq::run(req)?;
+        let (parts, mut body) = res.into_parts();
+        let res = ureq::http::Response::from_parts(parts, body.read_to_vec()?);
+        let maybe_crate = index.parse_cache_response(crate_name, res, true)?;
+        maybe_crate.ok_or(dyn_error(&format!(
+            "empty response for https://crates.io/crates/{crate_name}"
+        )))
+    };
+
+    let mut updates = vec![];
+    for dep in &package.dependencies {
+        let latest = fetch_crate(&dep.name).and_then(|krate| {
+            krate
+                .highest_normal_version()
+                .ok_or(dyn_error(&format!(
+                    "no valid version found for https://crates.io/crates/{}",
+                    dep.name,
+                )))
+                .map(|v| semver::Version::parse(v.version()).unwrap())
+        });
+
+        if let Err(e) = latest {
+            eprintln!(
+                "failed update of dependency requirements for {}: {e}",
+                dep.name
+            );
+            continue;
+        }
+
+        let latest = latest.unwrap();
+        let req_floor = &dep.req.comparators[0];
+
+        if latest.major > req_floor.major {
+            eprintln!(
+                "major update available: {} ({} -> {})",
+                dep.name, req_floor.major, latest.major,
+            )
+        } else if req_floor.minor.is_some_and(|m| latest.minor > m) {
+            if req_floor.op == semver::Op::Tilde {
+                eprintln!(
+                    "skipped minor update: {} ({} -> {}) due to tilde requirement {}",
+                    dep.name,
+                    format_args!("{}.{}", req_floor.major, req_floor.minor.unwrap()),
+                    format_args!("{}.{}", latest.major, latest.minor),
+                    dep.req,
+                );
+            } else {
+                updates.push(ReqUpdate {
+                    name: dep.name.clone(),
+                    major: latest.major,
+                    minor: latest.minor,
+                })
+            }
+        }
+    }
+    Ok(updates)
 }
